@@ -6,11 +6,17 @@ import (
 	"log"
 	"os"
 
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
-var DB *sql.DB
+var (
+	SQLDB  *sql.DB  // pure SQL ke liye
+	GormDB *gorm.DB // ORM ke liye
+)
 
 func Connect() {
 	err := godotenv.Load()
@@ -24,19 +30,25 @@ func Connect() {
 	dbPassword := os.Getenv("DB_PASSWORD")
 	dbName := os.Getenv("DB_NAME")
 
-	connStr := fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		dbHost, dbPort, dbUser, dbPassword, dbName,
+	dsn := fmt.Sprintf(
+		"host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
+		dbHost, dbUser, dbPassword, dbName, dbPort,
 	)
 
-	db, err := sql.Open("postgres", connStr)
+	// 1. GORM Connection
+	gormDB, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Failed to connect using GORM:", err)
 	}
+	GormDB = gormDB
 
-	if err = db.Ping(); err != nil {
-		log.Fatal(err)
+	// 2. SQL Connection (for manual query)
+	sqlDB, err := sql.Open("postgres", dsn)
+	if err != nil {
+		log.Fatal("Failed to connect using SQL:", err)
 	}
-
-	DB = db
+	if err = sqlDB.Ping(); err != nil {
+		log.Fatal("SQL Database not reachable:", err)
+	}
+	SQLDB = sqlDB
 }
