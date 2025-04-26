@@ -6,51 +6,49 @@ import (
 	"log"
 	"os"
 
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
-var DB *sql.DB
+var (
+	SQLDB  *sql.DB  // pure SQL ke liye
+	GormDB *gorm.DB // ORM ke liye
+)
 
 func Connect() {
-	// Load environment variables from .env file
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
 
-	// Get the DB connection details from environment variables
 	dbHost := os.Getenv("DB_HOST")
 	dbPort := os.Getenv("DB_PORT")
 	dbUser := os.Getenv("DB_USER")
 	dbPassword := os.Getenv("DB_PASSWORD")
 	dbName := os.Getenv("DB_NAME")
 
-	// Create the connection string
-	connStr := fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		dbHost, dbPort, dbUser, dbPassword, dbName,
+	dsn := fmt.Sprintf(
+		"host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
+		dbHost, dbUser, dbPassword, dbName, dbPort,
 	)
 
-	// Open the DB connection
-	db, err := sql.Open("postgres", connStr)
+	// 1. GORM Connection
+	gormDB, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		log.Fatal(err) // Log the error and terminate the application
+		log.Fatal("Failed to connect using GORM:", err)
 	}
+	GormDB = gormDB
 
-	// Check if the connection is established successfully
-	if err = db.Ping(); err != nil {
-		log.Fatal(err) // Log the error and terminate the application
+	// 2. SQL Connection (for manual query)
+	sqlDB, err := sql.Open("postgres", dsn)
+	if err != nil {
+		log.Fatal("Failed to connect using SQL:", err)
 	}
-
-	// Set the global DB variable
-	DB = db
-
-	// Ensure DB connection is closed gracefully when the app exits
-	// So that connections are properly cleaned up when app terminates
-	defer func() {
-		if err := DB.Close(); err != nil {
-			log.Println("Error closing DB connection:", err)
-		}
-	}()
+	if err = sqlDB.Ping(); err != nil {
+		log.Fatal("SQL Database not reachable:", err)
+	}
+	SQLDB = sqlDB
 }
