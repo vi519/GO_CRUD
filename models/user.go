@@ -6,9 +6,6 @@ type User struct {
 	Email string `json:"email"`
 }
 
-type Account struct {
-	ID            int    `json:"id"`
-	AccountNumber int    `json:"accountnumber"`
-	Name          string `json:"name"`
-	Email         string `json:"email"`
+func (User) TableName() string {
+	return "users"
 }
