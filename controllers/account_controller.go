@@ -20,6 +20,7 @@ func GetAccounts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	println("w value", json.NewEncoder(w).Encode(accounts))
 	// Return accounts in JSON format
 	json.NewEncoder(w).Encode(accounts)
 }
